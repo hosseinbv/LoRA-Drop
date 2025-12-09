@@ -2,6 +2,22 @@
   "identity": {
     "file_name": "identity.json"
   },
+    "myfineweb-15B": {
+    "file_name": "/work/benyamin/datasets/fineweb_15B_tokenized_fla/train_dataset",
+    "columns": {
+      "prompt": "text"
+    }
+  },
+    "myfineweb-15B-2": {
+    "file_name": "/work/benyamin/datasets/fineweb_15B_tokenized_fla/train_dataset/*.arrow",
+    "columns": { "text": "text" }   
+  },
+  "myfineedu": {
+    "file_name": "/work/benyamin/datasets/fineweb-edu/100B/prepared_2k_flatransformer",
+    "columns": {
+      "prompt": "text"
+    }
+  },
   "alpaca_en_demo": {
     "file_name": "alpaca_en_demo.json"
   },
@@ -700,6 +716,13 @@
       "prompt": "text"
     }
   },
+    "DKYoon-6b": {
+    "hf_hub_url": "DKYoon/SlimPajama-6B",
+    "columns": {
+      "prompt": "text"
+    }
+  },
+
   "the_stack": {
     "hf_hub_url": "bigcode/the-stack",
     "ms_hub_url": "AI-ModelScope/the-stack",

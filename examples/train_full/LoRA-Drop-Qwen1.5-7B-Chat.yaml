@@ -1,0 +1,46 @@
+### model
+model_name_or_path: ./huggingface/hub/models--Qwen--Qwen1.5-7B-Chat/snapshots/5f4f5e69ac7f1d508f8369e977de208b4803444b #./huggingface/hub/models--Qwen--Qwen2.5-0.5B-Instruct/snapshots/7ae557604adf67be50417f59c2c2f167def9a775
+trust_remote_code: true
+
+### method
+stage: pt
+do_train: true
+finetuning_type: full
+deepspeed: examples/deepspeed/ds_z3_config.json  # choices: [ds_z0_config.json, ds_z2_config.json, ds_z3_config.json]
+
+### dataset
+dataset: DKYoon-6b #myfineweb-15B-2 #myfineweb-15B #identity,alpaca_en_demo,alpaca_en
+cutoff_len: 4096
+# max_samples: 10
+overwrite_cache: true
+preprocessing_num_workers: 100
+dataloader_num_workers: 4
+tokenized_path: ./datasets/tokenized-DKYoon-6b-4k
+
+### output
+output_dir: ./saves/llama3-8b/lora-drop-7b-dkyoon-4k
+logging_steps: 1
+save_steps: 2
+save_total_limit: 3
+plot_loss: true
+overwrite_output_dir: true
+save_only_model: true
+report_to: tensorboard  # choices: [none, wandb, tensorboard, swanlab, mlflow]
+
+### train
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 16
+learning_rate: 1.0e-5
+num_train_epochs: 1.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.05
+bf16: true
+ddp_timeout: 180000000
+resume_from_checkpoint: null
+
+### eval
+# eval_dataset: alpaca_en_demo
+# val_size: 0.1
+# per_device_eval_batch_size: 1
+# eval_strategy: steps
+# eval_steps: 500

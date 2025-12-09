@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from llamafactory.train.tuner import run_exp
+from llamafactory.my_models import *
 
 
 def main():

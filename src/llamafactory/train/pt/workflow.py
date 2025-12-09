@@ -33,6 +33,42 @@ if TYPE_CHECKING:
     from ...hparams import DataArguments, FinetuningArguments, ModelArguments
 
 
+# ---- put near the top of workflow.py imports ----
+from contextlib import suppress
+
+
+def freeze_all_but_lora(model, allow_norm_and_lm_head: bool = False):
+    # 1) freeze everything
+    for p in model.parameters():
+        p.requires_grad = False
+
+    # 2) unfreeze only LoRA-Drop adapters
+    trainable_names = []
+    for name, module in model.named_modules():
+        if name.endswith("lora_adapter") or "lora_adapter" in name:
+            for pn, p in module.named_parameters(recurse=True):
+                p.requires_grad = True
+            trainable_names.append(name)
+
+    # (optional) if you also want to tune norms or lm_head, flip this flag
+    if allow_norm_and_lm_head:
+        for name, p in model.named_parameters():
+            if any(k in name for k in ["norm.weight", "lm_head.weight", "embed_tokens.weight"]):
+                p.requires_grad = True
+
+    # Print a quick summary
+    total, trainable = 0, 0
+    for p in model.parameters():
+        total += p.numel()
+        if p.requires_grad:
+            trainable += p.numel()
+    print(f"[LoRA-Drop] Trainable params: {trainable:,} / {total:,}")
+    if trainable_names:
+        print(f"[LoRA-Drop] Unfrozen adapters: {trainable_names}")
+    else:
+        print("[LoRA-Drop] WARNING: no lora_adapter modules were found. Check model wiring.")
+
+
 def run_pt(
     model_args: "ModelArguments",
     data_args: "DataArguments",
@@ -46,6 +82,27 @@ def run_pt(
     dataset_module = get_dataset(template, model_args, data_args, training_args, stage="pt", **tokenizer_module)
     model = load_model(tokenizer, model_args, finetuning_args, training_args.do_train)
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
+
+    # ---- LoRA-Drop training knobs (safe: getattr defaults if fields don't exist) ----
+    cfg = getattr(model, "config", None)
+    if cfg is not None:
+        # ❌ disable dual-pass; we now do single-pass token-accurate mixing
+        setattr(cfg, "lora_drop_training_dual_path", False)
+
+        # schedule and parity for LoRA-Drop
+        setattr(cfg, "drop_cycle", getattr(finetuning_args, "lora_drop_cycle", 4))  # or hardcode 4
+        setattr(cfg, "drop_parity", "even")  # skip even layers during drop-phase
+
+        # LoRA adapter sizing
+        setattr(cfg, "lora_rank", getattr(finetuning_args, "lora_drop_rank", 8))
+        setattr(cfg, "lora_alpha", getattr(finetuning_args, "lora_drop_alpha", 16.0))
+
+        # ✅ enable token-accurate mixing inside the layer
+        setattr(cfg, "lora_drop_token_accurate_train", True)
+
+
+    # >>> Freeze base model; train only LoRA adapters <<<
+    freeze_all_but_lora(model, allow_norm_and_lm_head=False)
 
     # Initialize our Trainer
     trainer = CustomTrainer(
